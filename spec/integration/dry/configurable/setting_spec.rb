@@ -328,7 +328,8 @@ RSpec.describe Dry::Configurable, ".setting" do
         klass.setting :env
 
         klass.setting :db do
-          setting :user, "root"
+          # Make "root" not-frozen, mutating in later tests
+          setting :user, "root".dup
           setting :pass, "secret"
         end
       end
@@ -375,13 +376,18 @@ RSpec.describe Dry::Configurable, ".setting" do
     end
 
     it "can be finalized" do
-      klass.setting :db, "sqlite"
+      klass.setting :kafka, "kafka://127.0.0.1:9092"
 
       object.finalize!
       # becomes a no-op
       object.finalize!
 
       expect(object).to be_frozen
+      expect(object.config.db).to be_frozen
+      expect(object.config.db.user).not_to be_frozen
+
+      object.config.db.user << "foo"
+      expect(object.config.db.user).to eq("rootfoo")
 
       # does not allow configure block anymore
       expect { object.configure {} }.to raise_error(Dry::Configurable::FrozenConfig)
